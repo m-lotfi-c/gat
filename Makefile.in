@@ -1,0 +1,20 @@
+prefix = @prefix@
+CC = @CC@
+CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"0.9.1\"
+CFLAGS = -g -Wall @GAT_CFLAGS@
+LDFLAGS = @GAT_LIBS@
+PROGRAMS = gat
+OBJECTS = at.o at_new.o cron.o cron_new.o gat.o generic_new.o
+
+all: $(PROGRAMS)
+
+gat: $(OBJECTS)
+
+install:
+	install -o root -g root gat $(prefix)/bin
+
+clean:
+	rm -f $(PROGRAMS) $(OBJECTS)
+
+distclean: clean
+	rm -f config.status config.cache config.log Makefile
