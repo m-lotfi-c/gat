@@ -12,9 +12,8 @@ To build Gat:
   make install       # as root
 
 Requirements:
-  GTK 1.2.x
-  GNOME 1.2.x or 1.4.x
-  Imlib
+  GTK 2.x
+  GNOME 2.x
 
 To run Gat:
   gat
