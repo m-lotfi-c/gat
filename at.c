@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -180,7 +180,13 @@ char *at_get_job_start(char *job) {
   if (!p) return NULL;
   p++;
   while (*p == '\r' || *p == '\n') p++;
-  return (*p) ? p : NULL;
+  if (*p) {
+    char *ret = g_strdup(p);
+    g_strchomp(ret);
+    return ret;
+  }
+  else
+    return NULL;
 }
 
 /** Put data into the at panel CList from the given at_job_t array.
@@ -196,6 +202,7 @@ void at_clist_refresh(GtkCList *clist, GArray *j) {
     text[0] = job->when;
     text[1] = at_get_job_start(job->cmd);
     gtk_clist_append(GTK_CLIST(clist), text);
+    if (text[1]) g_free(text[1]);
   }
 }
 
@@ -245,13 +252,14 @@ void at_details_callback(GtkWidget *clist) {
   while (sel) {
     at_job_t *job = g_array_index(at_jobs, at_job_t*, (int)(sel->data));
     GtkWidget *w, *vbox, *button, *table, *hbox, *label, *text_view;
+    GtkWidget *frame;
     GtkTextBuffer *text_buffer;
     char *buf = g_new(char, strlen(job->id)+4+1);
     char *buf2 = g_new(char, strlen(job->id) + strlen(job->when) + strlen(job->queue) + 3);
     char *job_start;
 
-    sprintf(buf, "Job %s", job->id);
-    sprintf(buf2, "%s\n%s\n%s", job->when, job->queue, job->id);
+    buf = g_strdup_printf("Job %s", job->id);
+    buf2 = g_strdup_printf("%s\n%s\n%s", job->when, job->queue, job->id);
 
     w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(w), buf);
@@ -266,6 +274,7 @@ void at_details_callback(GtkWidget *clist) {
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     label = gtk_label_new(buf2);
+		g_free(buf2);
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
@@ -274,11 +283,15 @@ void at_details_callback(GtkWidget *clist) {
     gtk_table_set_col_spacing(GTK_TABLE(table), 0, 2);
     gtk_box_pack_start(GTK_BOX(vbox), table, TRUE, TRUE, 0);
 
+    frame = gtk_frame_new(NULL);
+    gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_IN);
+
     text_view = gtk_text_view_new();
     text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
-    gtk_widget_set_usize(text_view, 400, 300);
+    gtk_widget_set_usize(text_view, 240, 120);
     gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
-    gtk_table_attach(GTK_TABLE(table), text_view, 0, 1, 0, 1,  
+    gtk_container_add(GTK_CONTAINER(frame), text_view);
+    gtk_table_attach(GTK_TABLE(table), frame, 0, 1, 0, 1,  
        GTK_EXPAND | GTK_SHRINK | GTK_FILL,
        GTK_EXPAND | GTK_SHRINK | GTK_FILL, 0, 0);
 #if 0
@@ -301,10 +314,12 @@ void at_details_callback(GtkWidget *clist) {
     fixed = gdk_font_load("fixed");
 #endif
     job_start = at_get_job_start(job->cmd);
-    if (job_start && job_start > job->cmd)
+    if (job_start) {
       gtk_text_buffer_set_text(GTK_TEXT_BUFFER(text_buffer),
         job_start, -1);
-		else
+      g_free(job_start);
+    }
+    else
       gtk_text_buffer_set_text(GTK_TEXT_BUFFER(text_buffer),
         job->cmd, -1);
 
@@ -322,9 +337,7 @@ void at_test_callback(GtkWidget *clist) {
   while (sel) {
     int i, skip = 0;
     at_job_t *job = g_array_index(at_jobs, at_job_t*, (int)(sel->data));
-    char *buf = g_new(char, strlen(job->id)+12+1);
-
-    sprintf(buf, "Run job \"%s\" ?", job->id);
+    char *buf = g_strdup_printf("Run job: \"%s\" ?", job->id);
     for (i=0; ; i++) {
       while (buf[i+skip] == '\n') skip++;
       buf[i] = buf[i+skip];

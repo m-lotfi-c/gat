@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -83,7 +83,6 @@ GArray *get_cron_jobs() {
 #define AMPM(n) (((n)>=12)?"pm":"am")
 
 char *cron_make_description(cron_job_t *j) {
-  char *s = g_new(char, 128);
   int hour = atoi(j->hour), minute = atoi(j->minute);
 
   if (strchr(j->minute, ',') || strchr(j->hour, ',') ||
@@ -101,10 +100,8 @@ char *cron_make_description(cron_job_t *j) {
     int n = (j->minute[1] == '/') ? atoi(j->minute+2) : 1;
     if (n == 1)
       return g_strdup("Every minute");
-    else {
-      sprintf(s, "Every %d minutes", n);
-      return s;
-    }
+    else
+      return g_strdup_printf("Every %d minutes", n);
   }
 
   /* every hour: "N *|N * * *"  */
@@ -112,14 +109,10 @@ char *cron_make_description(cron_job_t *j) {
       !strcmp(j->monthday, "*") && !strcmp(j->month, "*") &&
       !strcmp(j->weekday, "*")) {
     int n = (j->hour[1] == '/') ? atoi(j->hour+2) : 1;
-    if (n == 1) {
-      sprintf(s, "Every hour at %d past the hour", minute);
-      return s;
-    }
-    else {
-      sprintf(s, "Every %d hours at %d past the hour", n, minute);
-      return s;
-    }
+    if (n == 1)
+      return g_strdup_printf("Every hour at %d past the hour", minute);
+    else
+      return g_strdup_printf("Every %d hours at %d past the hour", n, minute);
   }
 
   /* daily: "N N *|N * *"  */
@@ -127,37 +120,34 @@ char *cron_make_description(cron_job_t *j) {
       j->monthday[0] == '*' && !strcmp(j->month, "*") &&
       !strcmp(j->weekday, "*")) {
     int n = (j->monthday[1] == '/') ? atoi(j->monthday+2) : 1;
-    if (n == 1) {
-      sprintf(s, "Every day at %d:%02d%s", HOUR(hour), minute, AMPM(hour));
-      return s;
-    }
-    else {
-      sprintf(s, "Every %d days at %d:%02d%s", n, HOUR(hour), minute,
-        AMPM(hour));
-      return s;
-    }
+    if (n == 1)
+      return g_strdup_printf("Every day at %d:%02d%s",
+        HOUR(hour), minute, AMPM(hour));
+    else
+      return g_strdup_printf("Every %d days at %d:%02d%s",
+        n, HOUR(hour), minute, AMPM(hour));
   }
 
   /* weekly: "N N * * N,N-N,N"  */
   if (j->minute[0] != '*' && j->hour[0] != '*' &&
       !strcmp(j->monthday, "*") && !strcmp(j->month, "*") &&
       j->weekday[0] != '*') {
-    char *p;
+    char *p, *ret;
     int commas = 0;
-    strcpy(s, "Every ");
+    GString *str = g_string_new("Every ");
     for (p=j->weekday; *p; p++)
       switch (*p) {
         case ',':
           if (strchr(p+1, ','))
-            strcat(s, ", ");
+            g_string_append(str, ", ");
           else if (commas == 0)
-            strcat(s, " and ");
+            g_string_append(str, " and ");
           else
-            strcat(s, ", and ");
+            g_string_append(str, ", and ");
           commas++;
           break;
         case '-':
-          strcat(s, " through ");
+          g_string_append(str, " through ");
           break;
         case '0':
         case '1':
@@ -167,15 +157,18 @@ char *cron_make_description(cron_job_t *j) {
         case '5':
         case '6':
         case '7':
-          strcat(s, week_name[(*p-'0') % 7]);
+          g_string_append(str, week_name[(*p-'0') % 7]);
           break;
         default:
           fprintf(stderr, "WARNING: invalid character '%c'"
             "in cron wday string\n", *p);
           break;
       }
-    sprintf(s+strlen(s), " at %d:%02d%s", HOUR(hour), minute, AMPM(hour));
-    return s;
+    g_string_append_printf(str, " at %d:%02d%s",
+      HOUR(hour), minute, AMPM(hour));
+    ret = str->str;
+    g_string_free(str, FALSE);
+    return ret;
   }
 
   /* every N months: "N N N *|N *"  */
@@ -183,37 +176,28 @@ char *cron_make_description(cron_job_t *j) {
       j->monthday[0] != '*' && j->month[0] == '*' &&
       !strcmp(j->weekday, "*")) {
     int n = (j->month[1] == '/') ? atoi(j->month+2) : 1;
-    if (n == 1) {
-      char *end = ordinal_ending(atoi(j->monthday));
-      sprintf(s, "On the %s%s of every month at %d:%02d%s", j->monthday,
-        end, HOUR(hour), minute, AMPM(hour));
-      return s;
-    }
-    else {
-      char *end = ordinal_ending(atoi(j->monthday));
-      char *end2 = ordinal_ending(n);
-      sprintf(s, "On the %s%s of every %d%s month at %d:%02d%s", j->monthday,
-        end, n, end2, HOUR(hour), minute, AMPM(hour));
-      return s;
-    }
+    if (n == 1)
+      return g_strdup_printf("On the %s%s of every month at %d:%02d%s",
+        j->monthday, ordinal_ending(atoi(j->monthday)),
+        HOUR(hour), minute, AMPM(hour));
+    else
+      return g_strdup_printf("On the %s%s of every %d%s month at %d:%02d%s",
+        j->monthday, ordinal_ending(atoi(j->monthday)), n,
+        ordinal_ending(n), HOUR(hour), minute, AMPM(hour));
   }
 
   /* every year: "N N N N *"  */
   if (j->minute[0] != '*' && j->hour[0] != '*' &&
       j->monthday[0] != '*' && j->month[0] != '*' &&
-      !strcmp(j->weekday, "*")) {
-    char *end = ordinal_ending(atoi(j->monthday));
-    sprintf(s, "Every year on the %s%s of %s at %d:%02d%s",
-      j->monthday, end, month_name[atoi(j->month)-1], HOUR(hour), minute,
-      AMPM(hour));
-    return s;
-  }
+      !strcmp(j->weekday, "*"))
+    return g_strdup_printf("Every year on the %s%s of %s at %d:%02d%s",
+      j->monthday, ordinal_ending(atoi(j->monthday)),
+      month_name[atoi(j->month)-1], HOUR(hour), minute, AMPM(hour));
 
 punt:
   /* punt! */
-  sprintf(s, "%s %s %s %s %s", j->minute, j->hour, j->monthday, j->month,
-    j->weekday);
-  return s;
+  return g_strdup_printf("%s %s %s %s %s",
+    j->minute, j->hour, j->monthday, j->month, j->weekday);
 }
 
 void cron_clist_refresh(GtkCList *clist, GArray *j) {
@@ -249,10 +233,7 @@ void cron_save(GArray *arr) {
       for (i=0; i<arr->len/*sizeof(cron_job_t*)*/; i++) {
         cron_job_t *job = g_array_index(arr, cron_job_t*, i);
         if (!job) continue;
-        buf = g_new(char, 
-          strlen(job->minute) + strlen(job->hour) + strlen(job->monthday) +
-          strlen(job->month) + strlen(job->weekday) + strlen(job->cmd) + 7);
-        sprintf(buf, "%s %s %s %s %s %s\n", job->minute, job->hour,
+        buf = g_strdup_printf("%s %s %s %s %s %s\n", job->minute, job->hour,
           job->monthday, job->month, job->weekday, job->cmd);
         write(p[1], buf, strlen(buf));
         g_free(buf);
@@ -305,10 +286,8 @@ void cron_test_callback(GtkWidget *clist) {
   while (sel) {
     int i, skip = 0;
     cron_job_t *job = g_array_index(cron_jobs, cron_job_t*, (int)(sel->data));
-    char *buf = g_new(char, strlen(job->cmd)+13+1);
-
-    sprintf(buf, "Run job: \"%s\" ?", job->cmd);
-    for (i=0;; i++) {
+    char *buf = g_strdup_printf("Run job: \"%s\" ?", job->cmd);
+    for (i=0; ; i++) {
       while (buf[i+skip] == '\n') skip++;
       buf[i] = buf[i+skip];
       if (!buf[i]) break;

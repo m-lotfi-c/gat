@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -127,4 +127,10 @@ GtkWidget *make_job_page(GtkWidget *box) {
   gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
   return ret;
+}
+
+gboolean cmd_changed(GtkEntry *entry, GnomeDruid *druid) {
+  const char *text = gtk_entry_get_text(entry);
+  gnome_druid_set_buttons_sensitive(druid, TRUE, text && *text, TRUE, TRUE);
+  return TRUE;
 }

@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -31,5 +31,6 @@ char *ordinal_ending(int n);
 extern char *month_name[];
 extern char *week_name[];
 GtkWidget *make_job_page(GtkWidget *box);
+gboolean cmd_changed(GtkEntry *entry, GnomeDruid *druid);
 
 #endif

@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -74,7 +74,7 @@ static gboolean druid_back_callback(GnomeDruidPage *page, GnomeDruid *druid) {
   GTK_SPIN_BUTTON(info->name))
 #define TGET(name) gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(info->name))
 
-static gboolean cron_commit_job(cron_druid_info *info) {
+static cron_job_t *create_cron_job(cron_druid_info *info) {
   const char *t;
   char buf[32];
   int last, i;
@@ -89,43 +89,34 @@ static gboolean cron_commit_job(cron_druid_info *info) {
       t = EGET(minute_minute);
       if (atoi(t) == 0)
         job->minute = g_strdup("*");
-      else {
-        sprintf(buf, "*/%d", atoi(t));
-        job->minute = g_strdup(buf);
-      }
+      else
+        job->minute = g_strdup_printf("*/%d", atoi(t));
       job->hour = g_strdup("*");
       job->monthday = g_strdup("*");
       job->month = g_strdup("*");
       job->weekday = g_strdup("*");
       break;
     case HOUR:
-      sprintf(buf, "%d", SGET(hour_minute));
-      job->minute = g_strdup(buf);
+      job->minute = g_strdup_printf("%d", SGET(hour_minute));
       t = EGET(hour_hour);
       if (atoi(t) == 0)
         job->hour = g_strdup("*");
-      else {
-        sprintf(buf, "*/%d", atoi(t));
-        job->hour = g_strdup(buf);
-      }
+      else
+        job->hour = g_strdup_printf("*/%d", atoi(t));
       job->monthday = g_strdup("*");
       job->month = g_strdup("*");
       job->weekday = g_strdup("*");
       break;
     case DAY:
-      sprintf(buf, "%d", SGET(day_minute));
-      job->minute = g_strdup(buf);
-      sprintf(buf, "%d", SGET(day_hour));
-      job->hour = g_strdup(buf);
+      job->minute = g_strdup_printf("%d", SGET(day_minute));
+      job->hour = g_strdup_printf("%d", SGET(day_hour));
       job->monthday = g_strdup("*");
       job->month = g_strdup("*");
       job->weekday = g_strdup("*");
       break;
     case WEEK:
-      sprintf(buf, "%d", SGET(week_minute));
-      job->minute = g_strdup(buf);
-      sprintf(buf, "%d", SGET(week_hour));
-      job->hour = g_strdup(buf);
+      job->minute = g_strdup_printf("%d", SGET(week_minute));
+      job->hour = g_strdup_printf("%d", SGET(week_hour));
       job->monthday = g_strdup("*");
       job->month = g_strdup("*");
       buf[0] = '\0';
@@ -162,28 +153,21 @@ static gboolean cron_commit_job(cron_druid_info *info) {
       job->weekday = g_strdup(buf);
       break;
     case MONTH:
-      sprintf(buf, "%d", SGET(month_minute));
-      job->minute = g_strdup(buf);
-      sprintf(buf, "%d", SGET(month_hour));
-      job->hour = g_strdup(buf);
-      sprintf(buf, "%d", atoi(EGET(month_day)));
-      job->monthday = g_strdup(buf);
+      job->minute = g_strdup_printf("%d", SGET(month_minute));
+      job->hour = g_strdup_printf("%d", SGET(month_hour));
+      job->monthday = g_strdup_printf("%d", atoi(EGET(month_day)));
       job->month = g_strdup("*");
       job->weekday = g_strdup("*");
       break;
     case YEAR:
-      sprintf(buf, "%d", SGET(year_minute));
-      job->minute = g_strdup(buf);
-      sprintf(buf, "%d", SGET(year_hour));
-      job->hour = g_strdup(buf);
-      sprintf(buf, "%d", atoi(EGET(year_day)));
-      job->monthday = g_strdup(buf);
+      job->minute = g_strdup_printf("%d", SGET(year_minute));
+      job->hour = g_strdup_printf("%d", SGET(year_hour));
+      job->monthday = g_strdup_printf("%d", atoi(EGET(year_day)));
       job->month = NULL;
       t = EGET(year_month);
       for (i=0; i<12; i++)
         if (!strcmp(t, month_name[i])) {
-          sprintf(buf, "%d", i+1);
-          job->month = g_strdup(buf);
+          job->month = g_strdup_printf("%d", i+1);
           break;
         }
       if (job->month == NULL) goto error_out;  /* month did not match */
@@ -200,9 +184,7 @@ static gboolean cron_commit_job(cron_druid_info *info) {
       fprintf(stderr, "Warning: info->which is invalid: %d\n", info->which);
       goto error_out;
   }
-  gtk_widget_destroy(info->win);
-  cron_add_job(job);
-  return TRUE;
+  return job;
 
 error_out:
   if (job) {
@@ -214,7 +196,16 @@ error_out:
     if (job->weekday) g_free(job->weekday);
     g_free(job);
   }
-  return FALSE;
+  return NULL;
+}
+
+static gboolean cron_commit_job(cron_druid_info *info) {
+  cron_job_t *job = create_cron_job(info);
+  if (!job) return FALSE;
+
+  gtk_widget_destroy(info->win);
+  cron_add_job(job);
+  return TRUE;
 }
 
 static gboolean druid_next_callback(GnomeDruidPage *page, GnomeDruid *druid,
@@ -255,8 +246,27 @@ static gboolean druid_next_callback(GnomeDruidPage *page, GnomeDruid *druid,
   return TRUE;
 }
 
+static gboolean prepare_last_page(GnomeDruidPageEdge *pg, GtkWidget *ign,
+    cron_druid_info *info) {
+  char *when, *desc;
+  cron_job_t *job = create_cron_job(info);
+  if (!job) {
+    gnome_druid_page_edge_set_text(pg,
+      "No command set.  Click \"Back\" to set one.");
+    return TRUE;
+  }
+  when = cron_make_description(job);
+  desc = g_strdup_printf("When: %s\nWhat: %s\n\n"
+    "If this is correct, click \"Apply\"", when, EGET(command));
+  gnome_druid_page_edge_set_text(pg, desc);
+  cron_free_job(job);
+  g_free(when);
+  g_free(desc);
+  return TRUE;
+}
+
 cron_job_t *make_new_cron_job() {
-  GtkWidget *win, *druid;
+  GtkWidget *druid;
   cron_druid_info *info;
   char *fname;
   GdkPixbuf *logo = NULL;
@@ -276,12 +286,10 @@ cron_job_t *make_new_cron_job() {
     logo = gdk_pixbuf_new_from_file(fname, NULL);
   g_free(fname);
 
-  win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_title(GTK_WINDOW(win), "New Recurring Job");
-  druid = gnome_druid_new();
-
   info = g_new(cron_druid_info, 1);
-  info->win = win;
+  druid = gnome_druid_new_with_window("New Recurring Job", NULL, TRUE,
+    &info->win);
+
   info->dp_start = gnome_druid_page_edge_new_with_vals(
     GNOME_EDGE_START, FALSE,
     "Create new recurring job",
@@ -311,10 +319,8 @@ cron_job_t *make_new_cron_job() {
     "Confirm new job",
     "Please confirm that the new job\n"
     "described here is correct, and\n"
-    "click the \"Finish\" button.", logo, NULL, NULL);
+    "click the \"Apply\" button.", logo, NULL, NULL);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_start), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gnome_druid_append_page(GNOME_DRUID(druid),
     GNOME_DRUID_PAGE(info->dp_start));
 
@@ -343,8 +349,6 @@ cron_job_t *make_new_cron_job() {
   info->rb_year = make_new_radiobutton("Every year", 0, &radio_group, vbox);
   info->rb_custom = make_new_radiobutton("Custom", 0, &radio_group, vbox);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_pick), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_pick), "next",
     GTK_SIGNAL_FUNC(druid_next_callback), (gpointer)info);
   gnome_druid_append_page(GNOME_DRUID(druid),
@@ -384,8 +388,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_minute), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_minute), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_minute), "back",
@@ -426,8 +428,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("minute(s) past the hour."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_hour), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_hour), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_hour), "back",
@@ -452,8 +452,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_day), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_day), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_day), "back",
@@ -485,8 +483,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_week), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_week), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_week), "back",
@@ -507,10 +503,9 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("Run job on the"), FALSE, FALSE, 0);
   cbitems = NULL;
-  for (i=1; i<=31; i++) {
-    sprintf(buf, "%d%s", i, ordinal_ending(i));
-    cbitems = g_list_append(cbitems, g_strdup(buf));
-  }
+  for (i=1; i<=31; i++)
+    cbitems = g_list_append(cbitems,
+			g_strdup_printf("%d%s", i, ordinal_ending(i)));
 
   cb = gtk_combo_new();
   gtk_combo_set_popdown_strings(GTK_COMBO(cb), cbitems);
@@ -526,8 +521,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox),
     gtk_label_new("."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_month), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_month), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_month), "back",
@@ -562,8 +555,8 @@ cron_job_t *make_new_cron_job() {
   info->year_month = GTK_COMBO(cb)->entry;
   cbitems = NULL;
   for (i=1; i<=31; i++) {
-    sprintf(buf, "%d%s", i, ordinal_ending(i));
-    cbitems = g_list_append(cbitems, g_strdup(buf));
+    cbitems = g_list_append(cbitems,
+			g_strdup_printf("%d%s", i, ordinal_ending(i)));
   }
 
   cb = gtk_combo_new();
@@ -580,8 +573,6 @@ cron_job_t *make_new_cron_job() {
   gtk_box_pack_start(GTK_BOX(hbox2),
     gtk_label_new("."), FALSE, FALSE, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_year), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_year), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_year), "back",
@@ -636,8 +627,6 @@ cron_job_t *make_new_cron_job() {
   gtk_table_attach(GTK_TABLE(table), info->custom_wday,
     1, 2, 4, 5, 0, 0, 0, 0);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_custom), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_custom), "next",
     GTK_SIGNAL_FUNC(druid_simple_next_callback), (gpointer)info->dp_job);
   gtk_signal_connect(GTK_OBJECT(info->dp_custom), "back",
@@ -650,30 +639,28 @@ cron_job_t *make_new_cron_job() {
   /* dp_job: select the command to run */
   /*************************************/
   
-  info->command = make_job_page(
-    GNOME_DRUID_PAGE_STANDARD(info->dp_job)->vbox);
+  info->command = make_job_page(GNOME_DRUID_PAGE_STANDARD(info->dp_job)->vbox);
 
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_job), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect(GTK_OBJECT(info->dp_job), "back",
     GTK_SIGNAL_FUNC(druid_back_callback), NULL);
+  gtk_signal_connect(GTK_OBJECT(info->command), "changed",
+    GTK_SIGNAL_FUNC(cmd_changed), (gpointer)druid);
   gnome_druid_append_page(GNOME_DRUID(druid),
     GNOME_DRUID_PAGE(info->dp_job));
 
   gtk_signal_connect_object(GTK_OBJECT(info->dp_finish), "finish",
     GTK_SIGNAL_FUNC(cron_commit_job), (gpointer)info);
-  gtk_signal_connect_object(GTK_OBJECT(info->dp_finish), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
-  gtk_signal_connect_object(GTK_OBJECT(win), "destroy",
+  gtk_signal_connect(GTK_OBJECT(info->dp_finish), "prepare",
+    GTK_SIGNAL_FUNC(prepare_last_page), (gpointer)info);
+  gtk_signal_connect_object(GTK_OBJECT(info->win), "destroy",
     GTK_SIGNAL_FUNC(g_free), (gpointer)info);
   gnome_druid_append_page(GNOME_DRUID(druid),
     GNOME_DRUID_PAGE(info->dp_finish));
 
-  gtk_container_add(GTK_CONTAINER(win), druid);
   gnome_druid_set_page(GNOME_DRUID(druid),
     GNOME_DRUID_PAGE(info->dp_start));
-  gtk_window_set_modal(GTK_WINDOW(win), TRUE);
-  gtk_widget_show_all(win);
+  gtk_window_set_modal(GTK_WINDOW(info->win), TRUE);
+  gtk_widget_show_all(info->win);
 
   gdk_pixbuf_unref(logo);
 

@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #include "generic_new.h"
 
 typedef struct {
-  GtkWidget *month, *day, *year, *hour, *minute, *command, *win;
+  GtkWidget *cal, *hour, *minute, *command, *win;
 } at_druid_info;
 
 #define EGET(name) gtk_entry_get_text(GTK_ENTRY(info->name))
@@ -31,29 +31,44 @@ typedef struct {
 
 static gboolean at_commit_job(at_druid_info *info) {
   const char *t;
-  char buf[32];
+  guint month, day, year;
   at_job_t *job = NULL;
   t = EGET(command);
-  if (!t || !*t) goto error_out;
+  if (!t || !*t) return FALSE;
   job = g_new(at_job_t, 1);
   job->cmd = strdup(t);
   job->id = job->queue = job->when = NULL;
 
-  sprintf(buf, "%02d%02d %02d/%02d/%04d",
-    SGET(hour), SGET(minute), SGET(month), SGET(day), SGET(year));
-  job->when = strdup(buf);
+  gtk_calendar_get_date(GTK_CALENDAR(info->cal), &year, &month, &day);
+  job->when = g_strdup_printf("%02d%02d %02d/%02d/%04d",
+    SGET(hour), SGET(minute), month+1, day, year);
 
   gtk_widget_destroy(info->win);
   at_add_job(job);
   return TRUE;
+}
 
-error_out:
-  at_free_job(job);
-  return FALSE;
+static gboolean prepare_last_page(GnomeDruidPageEdge *pg, GtkWidget *ign,
+    at_druid_info *info) {
+  char *desc;
+  const char *cmd = EGET(command);
+  guint month, day, year;
+  if (!cmd || !*cmd) {
+    gnome_druid_page_edge_set_text(pg,
+      "No command set.  Click \"Back\" to set one.");
+    return TRUE;
+  }
+  gtk_calendar_get_date(GTK_CALENDAR(info->cal), &year, &month, &day);
+  desc = g_strdup_printf("When: %02d/%02d/%04d at %02d:%02d\nWhat: %s\n\n"
+    "If this is correct, click \"Apply\"", month+1, day, year,
+    SGET(hour), SGET(minute), EGET(command));
+  gnome_druid_page_edge_set_text(pg, desc);
+  g_free(desc);
+  return TRUE;
 }
 
 at_job_t *make_new_at_job() {
-  GtkWidget *win, *druid, *page_start, *page_at1, *page_at2, *page_finish;
+  GtkWidget *druid, *page_start, *page_at1, *page_at2, *page_finish;
   GtkWidget *hbox, *frame, *align, *bigvbox;
   at_druid_info *info;
   struct tm *tp;
@@ -70,9 +85,8 @@ at_job_t *make_new_at_job() {
   tp = localtime(&t);
 
   info = g_new(at_druid_info, 1);
-  info->win = win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_title(GTK_WINDOW(win), "New One-Time Job");
-  druid = gnome_druid_new();
+  druid = gnome_druid_new_with_window("New One-Time Job",
+    NULL, TRUE, &info->win);
 
   page_start = gnome_druid_page_edge_new_with_vals(
     GNOME_EDGE_START, FALSE,
@@ -86,10 +100,7 @@ at_job_t *make_new_at_job() {
     "Select command", logo, NULL);
   page_finish = gnome_druid_page_edge_new_with_vals(
     GNOME_EDGE_FINISH, FALSE,
-    "Confirm new job",
-    "Please confirm that the new job\n"
-    "described here is correct, and\n"
-    "click the \"Finish\" button.", logo, NULL, NULL);
+    "Confirm new job", NULL, logo, NULL, NULL);
 
   bigvbox = gtk_vbox_new(FALSE, 0);
   align = gtk_alignment_new(0.5, 0.5, 0.0, 0.0);
@@ -97,16 +108,8 @@ at_job_t *make_new_at_job() {
   gtk_box_pack_start(GTK_BOX(GNOME_DRUID_PAGE_STANDARD(page_at1)->vbox),
     align, TRUE, TRUE, 0);
 
-  hbox = gtk_hbox_new(FALSE, 0);
-  frame = gtk_frame_new("Date");
-  gtk_container_set_border_width(GTK_CONTAINER(frame), 8);
-  gtk_box_pack_start(GTK_BOX(bigvbox), frame, FALSE, FALSE, 0);
-  gtk_container_add(GTK_CONTAINER(frame), hbox);
-
-  info->month = make_new_spinner("Month:", tp->tm_mon+1, 1, 12, 5, hbox);
-  info->day = make_new_spinner("Day:", tp->tm_mday, 1, 31, 5, hbox);
-  info->year =
-    make_new_spinner("Year:", tp->tm_year+1900, 1900, 2100, 10, hbox);
+  info->cal = gtk_calendar_new();
+  gtk_box_pack_start(GTK_BOX(bigvbox), info->cal, FALSE, FALSE, 0);
 
   hbox = gtk_hbox_new(FALSE, 0);
   frame = gtk_frame_new("Time");
@@ -119,27 +122,22 @@ at_job_t *make_new_at_job() {
 
   info->command = make_job_page(GNOME_DRUID_PAGE_STANDARD(page_at2)->vbox);
 
-  gtk_signal_connect_object(GTK_OBJECT(page_start), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
-  gtk_signal_connect_object(GTK_OBJECT(page_at1), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
-  gtk_signal_connect_object(GTK_OBJECT(page_at2), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
   gtk_signal_connect_object(GTK_OBJECT(page_finish), "finish",
     GTK_SIGNAL_FUNC(at_commit_job), (gpointer)info);
-  gtk_signal_connect_object(GTK_OBJECT(page_finish), "cancel",
-    GTK_SIGNAL_FUNC(gtk_widget_destroy), (gpointer)win);
-  gtk_signal_connect_object(GTK_OBJECT(win), "destroy",
+  gtk_signal_connect_object(GTK_OBJECT(info->win), "destroy",
     GTK_SIGNAL_FUNC(g_free), (gpointer)info);
+  gtk_signal_connect(GTK_OBJECT(page_finish), "prepare",
+    GTK_SIGNAL_FUNC(prepare_last_page), (gpointer)info);
+  gtk_signal_connect(GTK_OBJECT(info->command), "changed",
+    GTK_SIGNAL_FUNC(cmd_changed), (gpointer)druid);
 
-  gtk_container_add(GTK_CONTAINER(win), druid);
   gnome_druid_append_page(GNOME_DRUID(druid), GNOME_DRUID_PAGE(page_start));
   gnome_druid_append_page(GNOME_DRUID(druid), GNOME_DRUID_PAGE(page_at1));
   gnome_druid_append_page(GNOME_DRUID(druid), GNOME_DRUID_PAGE(page_at2));
   gnome_druid_append_page(GNOME_DRUID(druid), GNOME_DRUID_PAGE(page_finish));
   gnome_druid_set_page(GNOME_DRUID(druid), GNOME_DRUID_PAGE(page_start));
-  gtk_window_set_modal(GTK_WINDOW(win), TRUE);
-  gtk_widget_show_all(win);
+  gtk_window_set_modal(GTK_WINDOW(info->win), TRUE);
+  gtk_widget_show_all(info->win);
 
   gdk_pixbuf_unref(logo);
 

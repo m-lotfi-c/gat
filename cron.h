@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -27,9 +27,11 @@ typedef struct {
 
 extern GArray *cron_jobs;
 GArray *get_cron_jobs();
+void cron_free_job(cron_job_t *p);
 GtkWidget *make_cron_page(GArray *j);
 void print_cron_jobs(GArray *cj);
 cron_job_t *make_new_cron_job();
 void cron_add_job(cron_job_t *job);
+char *cron_make_description(cron_job_t *j);
 
 #endif
