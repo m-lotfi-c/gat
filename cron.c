@@ -79,7 +79,7 @@ GArray *get_cron_jobs() {
   return j;
 }
 
-#define HOUR(n) (((n)==0)?12:((n)%12))
+#define HOUR(n) ((((n)+11) % 12) + 1)
 #define AMPM(n) (((n)>=12)?"pm":"am")
 
 char *cron_make_description(cron_job_t *j) {
