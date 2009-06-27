@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Task Scheduler
+Exec=gat
+Icon=gnome-unknown.png
+Terminal=0
+Type=Application
