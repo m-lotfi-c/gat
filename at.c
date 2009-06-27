@@ -237,7 +237,7 @@ void at_reread() {
 void at_delete_callback(GtkWidget *clist) {
   GList *sel = GTK_CLIST(clist)->selection;
   while (sel) {
-    at_job_t *job = g_array_index(at_jobs, at_job_t*, (int)(sel->data));
+    at_job_t *job = g_array_index(at_jobs, at_job_t*, GPOINTER_TO_INT(sel->data));
     delete_at_job(job->id);
     sel = g_list_next(sel);
   }
@@ -250,7 +250,7 @@ void at_delete_callback(GtkWidget *clist) {
 void at_details_callback(GtkWidget *clist) {
   GList *sel = GTK_CLIST(clist)->selection;
   while (sel) {
-    at_job_t *job = g_array_index(at_jobs, at_job_t*, (int)(sel->data));
+    at_job_t *job = g_array_index(at_jobs, at_job_t*, GPOINTER_TO_INT(sel->data));
     GtkWidget *w, *vbox, *button, *table, *hbox, *label, *text_view;
     GtkWidget *frame;
     GtkTextBuffer *text_buffer;
@@ -336,7 +336,7 @@ void at_test_callback(GtkWidget *clist) {
   GList *sel = GTK_CLIST(clist)->selection;
   while (sel) {
     int i, skip = 0;
-    at_job_t *job = g_array_index(at_jobs, at_job_t*, (int)(sel->data));
+    at_job_t *job = g_array_index(at_jobs, at_job_t*, GPOINTER_TO_INT(sel->data));
     char *buf = g_strdup_printf("Run job: \"%s\" ?", job->id);
     for (i=0; ; i++) {
       while (buf[i+skip] == '\n') skip++;

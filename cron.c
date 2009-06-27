@@ -273,9 +273,9 @@ void cron_sync() {
 void cron_delete_callback(GtkWidget *clist) {
   GList *sel = GTK_CLIST(clist)->selection;
   while (sel) {
-    cron_job_t *job = g_array_index(cron_jobs, cron_job_t*, (int)(sel->data));
+    cron_job_t *job = g_array_index(cron_jobs, cron_job_t*, GPOINTER_TO_INT(sel->data));
     cron_free_job(job);
-    g_array_index(cron_jobs, cron_job_t*, (int)(sel->data)) = NULL;
+    g_array_index(cron_jobs, cron_job_t*, GPOINTER_TO_INT(sel->data)) = NULL;
     sel = g_list_next(sel);
   }
   cron_sync();
@@ -285,7 +285,7 @@ void cron_test_callback(GtkWidget *clist) {
   GList *sel = GTK_CLIST(clist)->selection;
   while (sel) {
     int i, skip = 0;
-    cron_job_t *job = g_array_index(cron_jobs, cron_job_t*, (int)(sel->data));
+    cron_job_t *job = g_array_index(cron_jobs, cron_job_t*, GPOINTER_TO_INT(sel->data));
     char *buf = g_strdup_printf("Run job: \"%s\" ?", job->cmd);
     for (i=0; ; i++) {
       while (buf[i+skip] == '\n') skip++;
