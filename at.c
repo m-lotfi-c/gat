@@ -1,5 +1,5 @@
 /* gat - The GNOME Task Scheduler
- * Copyright (C) 2000-2005 by Patrick Reynolds <reynolds@cs.duke.edu>
+ * Copyright (C) 2000-2009 by Patrick Reynolds <patrick@piki.org>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -254,8 +254,7 @@ void at_details_callback(GtkWidget *clist) {
     GtkWidget *w, *vbox, *button, *table, *hbox, *label, *text_view;
     GtkWidget *frame;
     GtkTextBuffer *text_buffer;
-    char *buf = g_new(char, strlen(job->id)+4+1);
-    char *buf2 = g_new(char, strlen(job->id) + strlen(job->when) + strlen(job->queue) + 3);
+    char *buf, *buf2;
     char *job_start;
 
     buf = g_strdup_printf("Job %s", job->id);
@@ -274,7 +273,7 @@ void at_details_callback(GtkWidget *clist) {
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     label = gtk_label_new(buf2);
-		g_free(buf2);
+    g_free(buf2);
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
