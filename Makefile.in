@@ -1,6 +1,6 @@
 prefix = @prefix@
 CC = @CC@
-CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"0.9.2\"
+CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"0.9.3\"
 CFLAGS = -g -Wall -Werror @GAT_CFLAGS@
 LDFLAGS = @GAT_LIBS@
 PROGRAMS = gat gkill
