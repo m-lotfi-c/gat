@@ -2,11 +2,16 @@
 .deps
 .libs
 .notar
+.svn
+debian/.svn
 CVS
 build
 crondesc
+gat
 gkill
-gkill.c
 libtool
 makecron
 unbuild
+*.tar.gz
+*.o
+gat-*/gat-*

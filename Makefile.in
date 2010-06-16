@@ -1,6 +1,7 @@
 prefix = @prefix@
 CC = @CC@
-CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"0.9.3\"
+VERSION = 0.9.3
+CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"$(VERSION)\"
 CFLAGS = -g -Wall -Werror @GAT_CFLAGS@
 LDFLAGS = @GAT_LIBS@
 PROGRAMS = gat gkill
@@ -9,6 +10,12 @@ OBJECTS = at.o at_new.o cron.o cron_new.o gat.o generic_new.o
 all: $(PROGRAMS)
 
 gat: $(OBJECTS)
+
+gat-$(VERSION).tar.gz: Makefile .notar
+	rm -f gat-$(VERSION)
+	ln -sf . gat-$(VERSION)
+	tar chvzf $@ --exclude-from=.notar gat-$(VERSION)
+	rm -f gat-$(VERSION)
 
 install:
 	install -o root -g root gat $(prefix)/bin
