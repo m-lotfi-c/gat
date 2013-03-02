@@ -1,0 +1,32 @@
+00000 * (every minute) every minute
+00001   all day, one day of each week
+00010   all day, all month, during Foouary
+00011   all day, on Fooday during Foouary
+00100   all day, each month on the Nth
+00101   all day, every time the Nth is a Fooday
+00110   all day, one day of the year
+00111   all day, every time the Nth is a Fooday during Foouary
+01000 * (hourly) every hour at N past the hour
+01001   every hour at N past the hour on Foodays
+01010   every hour during Foouary
+01011   every hour on Fooday during Foouary
+01100   every hour, each month on the Nth
+01101   every hour, every time the Nth is a Fooday
+01110   every hour, one day of the year
+01111   every hour, whenever the Nth is a Fooday during Foouary
+10000   every minute for an hour, every day
+10001   every minute for an hour on Foodays
+10010   every minute for an hour during Foouary
+10011   every minute for an hour on Foodays during Foouary
+10100   every minute for an hour each month on the Nth
+10101   every minute for an hour every time the Nth is a Fooday
+10110   every minute for an hour, one day of the year
+10111   every minute for an hour, whenever the Nth of Foouary is a Fooday
+11000 * (daily) every day at N:NN
+11001 * (weekly) every Fooday at N:NN
+11010   every day of Foouary at N:NN
+11011   every Fooday in Foouary at N:NN
+11100 * (monthly) on the Nth of every month at N:NN
+11101   every time the Nth is a Fooday, at N:NN
+11110 * (yearly) every Foouary the Nth at N:NN
+11111   every Foouary the Nth at N:NN, if it's a Fooday

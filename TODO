@@ -1,0 +1,23 @@
+at: use last non-blank line
+at&cron: confirm screen is blank!
+at&cron: "edit" screen
+
+big "close" button is unnecessary.
+"job details" for at is unnecessary.
+nasty warnings on stderr.
+
+
+* porting and port testing
+* add "refresh" buttons? (or refresh automatically?)
+* rescan before committing.  mark each entry as to-be-deleted, to-be-added,
+  or unchanged, and apply the changes appropriately while rescanning.
+* preserve comments/spacing in cron files? (nah)
+* add some way to kill launched jobs (separate helper program?)
+* (better) validators in the druids
+* zero-pad the minute spinners.  Does this mean abandoning GtkSpinButton?
+* add AM/PM to hour spinners
+* check for memory and file descriptor leaks
+* add special classes of jobs like "send an e-mail" or "pop up a message"
+  or "play a sound", or apps from Gnome start menu.
+* drag and drop from Gnome start menu onto main screen (start a new job
+  pre-filled with the program) or to "pick program" screen

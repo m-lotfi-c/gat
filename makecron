@@ -1,0 +1,21 @@
+#!/bin/sh
+
+crontab - <<__EOF__
+* * 30 * * /bin/true
+* * 31 * * /bin/true
+* * * * * /bin/true
+* */4 * * * /bin/true
+* 4 * * * /bin/true
+*/4 5 * * * /bin/true
+6 2 * * * /bin/true
+6 2 */7 * * /bin/true
+8 4 * * 3 /bin/true
+10 7 9 * * /bin/true
+10 7 9 */3 * /bin/true
+11 15 24 1 * /bin/true
+__EOF__
+crontab -l
+
+echo /bin/true | at 8:00 02/24/2035
+echo /bin/true | at 9:00 02/25/2035
+atq
