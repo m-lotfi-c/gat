@@ -662,7 +662,7 @@ cron_job_t *make_new_cron_job() {
   gtk_window_set_modal(GTK_WINDOW(info->win), TRUE);
   gtk_widget_show_all(info->win);
 
-  gdk_pixbuf_unref(logo);
+  g_object_unref(logo);
 
   return NULL;
 }

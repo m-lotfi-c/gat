@@ -3,7 +3,7 @@ CC = @CC@
 VERSION = 0.9.3
 CPPFLAGS = -DGNOME_APPLET -DPACKAGE=\"gat\" -DVERSION=\"$(VERSION)\"
 CFLAGS = -g -Wall -Werror @GAT_CFLAGS@
-LDFLAGS = @GAT_LIBS@
+LDLIBS = @GAT_LIBS@
 PROGRAMS = gat gkill
 OBJECTS = at.o at_new.o cron.o cron_new.o gat.o generic_new.o
 
