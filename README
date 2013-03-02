@@ -1,5 +1,5 @@
 The GNOME Task Scheduler (Gnome At)
-  by Patrick Reynolds <patrick@piki.org>
+  by Patrick Reynolds
 
 Gat allows you to schedule tasks that will run once or periodically.  It
 is a front-end to cron and at, though in theory, you should be able to use
@@ -7,6 +7,7 @@ Gat with little or no knowledge of cron or at.  Gat can list, add, remove,
 and test cron and at jobs.
 
 To build Gat:
+	autoconf
   ./configure
   make
   make install       # as root
